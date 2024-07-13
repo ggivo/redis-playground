@@ -1,0 +1,20 @@
+<configuration>
+
+    <!-- Console appender -->
+    <appender name="console" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss} %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- Root logger -->
+    <root level="info">
+        <appender-ref ref="console"/>
+    </root>
+
+    <!-- Custom logger for RedisConsumerService -->
+    <logger name="com.redis.examples.consumer" level="info" additivity="false">
+        <appender-ref ref="console"/>
+    </logger>
+
+</configuration>
