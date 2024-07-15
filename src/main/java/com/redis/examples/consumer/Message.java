@@ -14,6 +14,10 @@ public class Message {
     @JsonProperty("random_property")
     private String randomProperty;
 
+    public Message() {
+    }
+
+
     public Message(String messageId) {
         this.messageId = messageId;
     }
