@@ -2,6 +2,9 @@ package com.redis.examples.consumer;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.lettuce.core.api.sync.RedisCommands;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
+import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,21 +25,49 @@ public class RedisConsumerService {
 
     private final String consumerId = "Consumer-" + UUID.randomUUID();
 
-    private final AtomicInteger messageCount = new AtomicInteger(0);
-    @Autowired
-    MessageProcessor messsageProcessor;
-    @Autowired
-    private RedisTemplate<String, String> redisTemplate;
-    @Autowired
-    private ObjectMapper objectMapper;
+    // Number of successfully processed messages since last reported
+    private final AtomicInteger successCount = new AtomicInteger(0);
+    // Total number of processed messages
+    private Counter successCountTotal;
+
+    // Number of errors since we last reported them
+    private final AtomicInteger errorCount = new AtomicInteger(0);
+    // Total number of errors
+    private Counter errorCountTotal;
+
     @Value("${redis.lock.expiration.seconds}")
     private long lockExpirationSeconds;
+
     @Value("${metrics.report.period.seconds}")
     private long metricsReportPeriodSeconds;
+
+    @Autowired
+    MessageProcessor messageProcessor;
+
+    @Autowired
+    private RedisTemplate<String, String> redisTemplate;
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
     @Autowired
     private RedisCommands<String, String> redisCommands;
+
     @Autowired
     private RedisTimeSeriesCommands tsCmds;
+
+    @Autowired
+    private MeterRegistry meterRegistry;
+
+    @PostConstruct
+    public void init() {
+        successCountTotal = Counter.builder("messages:processed:success:count")
+                .description("Number of messages processed")
+                .register(meterRegistry);
+        errorCountTotal = Counter.builder("messages:processed:failed:count")
+                .description("Number of messages processed")
+                .register(meterRegistry);
+    }
 
     public void onMessage(String message, String channel) {
         logger.trace("{} - Received message:", consumerId, message);
@@ -49,35 +80,41 @@ public class RedisConsumerService {
             String messageId = msg.getMessageId();
             String lockValue = consumerId;
 
-            // Try to set the lock with an expiration time to prevent other notes processing same message
-            boolean lockAcquired = acquireLock(lockKey, lockValue);
-            if (lockAcquired) {
-                try {
-                    // Process the message
-                    // TODO: implement retry onError logic
-                    Message processed = messsageProcessor.process(msg, consumerId);
-                    logger.debug("{} - Processed message: {}", consumerId, objectMapper.writeValueAsString(msg));
+            // Try to acquire lease with an expiration time to prevent other notes processing same message
+            boolean leaseAcquired = acquireLock(lockKey, lockValue);
+            if (leaseAcquired) {
+                // Process the message
+                Message processed = messageProcessor.process(msg, consumerId);
+                logger.debug("{} - Processed message: {}", consumerId, objectMapper.writeValueAsString(msg));
 
-                    // Store the processed message in Redis Stream
-                    Map<String, String> processedMessage = convertToMap(msg);
-                    redisTemplate.opsForStream().add("messages:processed", processedMessage);
+                // Store the processed message in Redis Stream
+                Map<String, String> processedMessage = convertToMap(msg);
+                redisTemplate.opsForStream().add("messages:processed", processedMessage);
 
-                    // Update the message count
-                    messageCount.incrementAndGet();
-                } finally {
-                    // Do not release lock explicitly, but relly on ttl
-                    // this way we make sure other consumers do not process same message
-                }
+                // Update processed messages count
+                incrementSuccessCount();
             } else {
                 logger.debug("{} - Message already processed by another consumer: {}", consumerId, messageId);
             }
         } catch (Exception e) {
+            // Update the error count
+            incrementErrorCount();
             logger.error("{} - Error processing message: {}", consumerId, e.getMessage(), e);
         }
     }
 
+    private void incrementErrorCount() {
+        errorCountTotal.increment();
+        errorCount.incrementAndGet();
+    }
+
+    private void incrementSuccessCount() {
+        successCountTotal.increment();
+        successCount.incrementAndGet();
+    }
+
     private boolean acquireLock(String lockKey, String value) {
-        // Try to set the lock with an expiration time
+        // Try to acquire lease with configured lease expiration time
         Boolean lockAcquired = redisTemplate.opsForValue().setIfAbsent(lockKey, consumerId, lockExpirationSeconds, TimeUnit.SECONDS);
         return Boolean.TRUE.equals(lockAcquired);
     }
@@ -91,23 +128,26 @@ public class RedisConsumerService {
     }
 
     @Scheduled(fixedRateString = "${metrics.report.period.seconds}000")
-    private void reportMessageRate() {
-        int count = messageCount.getAndSet(0);
-        double rate = count / (double) metricsReportPeriodSeconds;
-        logger.info("Messages processed per second: {}", rate);
-        reportToRedisTimeSeries(rate);
+    private void reportMetrics() {
+        int processed = successCount.getAndSet(0);
+        int errors = errorCount.getAndSet(0);
+        logger.info("Messages processed: {}, failed : {}", processed, errors);
+
+        publishMetricsToRedis();
     }
 
-    private void reportToRedisTimeSeries(double rate) {
-        String key = getProcessedMessagesTsKey();
+    private void publishMetricsToRedis() {
 
-        // TODO : use redis server time "*"?
-        tsCmds.tsAdd(key, System.currentTimeMillis(), rate);
-        logger.debug("Reported messages processed per second to Redis TimeSeries: {}", rate);
+        tsCmds.tsAdd(getProcessedMessagesTsKey() + ":count", System.currentTimeMillis(), successCountTotal.count());
+        tsCmds.tsAdd(getFailedMessagesTsKey() + ":count", System.currentTimeMillis(), errorCountTotal.count());
     }
 
     public String getProcessedMessagesTsKey() {
-        return "metrics:messages:processed:rate:" + consumerId;
+        return "metrics:messages:processed:" + consumerId;
+    }
+
+    public String getFailedMessagesTsKey() {
+        return "metrics:messages:failed:" + consumerId;
     }
 
     public String getConsumerId() {

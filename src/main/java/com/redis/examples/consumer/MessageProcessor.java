@@ -8,12 +8,6 @@ import java.util.UUID;
 public class MessageProcessor {
 
     public Message process(Message message, String consumerId) {
-        // Simulate processing time
-        try {
-            Thread.sleep((long) (Math.random() * 100));
-        } catch (InterruptedException e) {
-            throw new RuntimeException("Error observed while processing message!", e);
-        }
         message.setProcessedBy(consumerId);
         message.setRandomProperty(UUID.randomUUID().toString());
 

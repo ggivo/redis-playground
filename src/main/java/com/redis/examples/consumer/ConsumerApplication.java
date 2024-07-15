@@ -15,9 +15,6 @@ public class ConsumerApplication {
         app.setBannerMode(Banner.Mode.OFF);
         app.setWebApplicationType(WebApplicationType.NONE); // Ensure no web environment
         app.run(args);
-//        SpringApplication application = new SpringApplication(ConsumerApplication.class);
-//        application.setBannerMode(Banner.Mode.OFF);
-//        application.run(args);
     }
 
 }

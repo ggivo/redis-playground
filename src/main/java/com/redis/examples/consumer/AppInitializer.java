@@ -12,8 +12,13 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class AppInitializer {
-    private static final Logger logger = LoggerFactory.getLogger(AppInitializer.class);
 
+    // Redis TimeSeries metric labels
+    public static final String L_CONSUMER = "consumer";
+    public static final String L_APP = "app";
+    public static final String L_METRIC = "metric";
+
+    private static final Logger logger = LoggerFactory.getLogger(AppInitializer.class);
     @Autowired
     RedisTimeSeriesCommands tsCmd;
 
@@ -37,12 +42,20 @@ public class AppInitializer {
     }
 
     @EventListener(ContextRefreshedEvent.class)
-    public void initRedis() {
+    public void initRedisTS() {
 
+        // Redis TimeSeries metric labels
         try {
-            tsCmd.tsCreateWithRetentionAndLabels(consumer.getProcessedMessagesTsKey(),
-                    "consumer", consumer.getConsumerId(), "app", "redis");
-            logger.debug("TimeSeries {} created.", consumer.getProcessedMessagesTsKey());
+            tsCmd.tsCreateWithRetentionAndLabels(consumer.getProcessedMessagesTsKey() + ":count",
+                    L_CONSUMER, consumer.getConsumerId(),
+                    L_APP, "redis",
+                    L_METRIC, "messages:processed:count");
+
+            tsCmd.tsCreateWithRetentionAndLabels(consumer.getFailedMessagesTsKey()  + ":count",
+                    L_CONSUMER, consumer.getConsumerId(),
+                    L_APP, "redis",
+                    L_METRIC, "messages:failed:count");
+
         } catch (Exception e) {
             logger.debug("TimeSeries {} already exists.", consumer.getProcessedMessagesTsKey());
         }
@@ -50,15 +63,15 @@ public class AppInitializer {
 
     private void registerConsumer() {
         //Send one heart beat before registering the app as active
-        //to make sure other nodes does not remove it.
+        //to make sure other nodes does not remove it from active consumers list.
         heartbeatService.sendHeartbeat();
         redisCommands.lpush("consumer:ids", consumer.getConsumerId());
-        logger.info(consumer.getConsumerId() + " - Registered");
+        logger.info("{} - Registered", consumer.getConsumerId());
     }
 
     private void unregisterConsumer() {
         redisCommands.lrem("consumer:ids", 1, consumer.getConsumerId());
-        logger.info(consumer.getConsumerId() + " - Deregistered");
+        logger.info("{} - Deregistered", consumer.getConsumerId());
     }
 
 }
