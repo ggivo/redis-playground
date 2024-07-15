@@ -133,13 +133,11 @@ public class RedisConsumerService {
         int errors = errorCount.getAndSet(0);
         logger.info("Messages processed: {}, failed : {}", processed, errors);
 
-        publishMetricsToRedis();
-    }
-
-    private void publishMetricsToRedis() {
-
         tsCmds.tsAdd(getProcessedMessagesTsKey() + ":count", System.currentTimeMillis(), successCountTotal.count());
+        tsCmds.tsAdd(getProcessedMessagesTsKey() + ":rate", System.currentTimeMillis(), processed);
+
         tsCmds.tsAdd(getFailedMessagesTsKey() + ":count", System.currentTimeMillis(), errorCountTotal.count());
+        tsCmds.tsAdd(getFailedMessagesTsKey()+ ":rate", System.currentTimeMillis(), errors);
     }
 
     public String getProcessedMessagesTsKey() {

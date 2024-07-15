@@ -13,10 +13,13 @@ mvn clean install
 ### Prerequisites
 Make sure you have a Redis server installed and running.
 
+## Redis Consumer App
+
+Multiple instances of this app can run in parallel, consuming messages from a configured pub/sub channel. Each message will be processed only once. The list of active service instances is stored in the Redis server under the key `consumer:ids`.
+
 ### Running the Application
-Multiple instances of the app can run in parallel consuming messages from configured pub/sub chanel.
-Each message will be processed by one of the instances.
-To run instances of the application use one of the following methods.
+
+To run instances of the application, use one of the following methods:
 
 1. **Using Maven**: Run the application directly using Maven:
     ```bash
@@ -55,7 +58,7 @@ Metrics are reported to the log and also stored in Redis TimeSeries
 - Redis TimeSeries
   - Processed messages counter
     - key `metrics:messages:processed:{consumerId}`
-    - labels `app=redis` `consumer={consumerId}` 'metric=messages:processed'
+    - labels `app=redis` `consumer={consumerId}` `metric=messages:processed`
   - Failed messages counter
       - key `metrics:messages:failed:{consumerId}`
       - labels `app=redis` `consumer={consumerId} 'metric=messages:failed'`
@@ -63,15 +66,15 @@ Metrics are reported to the log and also stored in Redis TimeSeries
 ### Example metrics queries 
 - Total Messages processed per 10m
   ```
-  TS.MRANGE  - + WITHLABELS ALIGN start AGGREGATION sum 600000 FILTER app=redis GROUPBY app REDUCE sum
+  TS.MRANGE  - + WITHLABELS ALIGN start AGGREGATION sum 600000 FILTER app=redis metric=messages:processed:rate GROUPBY app REDUCE sum
   ```
-- Messages processed per consumer  per 3s
+- Messages processed per consumer  per 10m
   ```
-  TS.MRANGE  - + WITHLABELS ALIGN start AGGREGATION sum 3000 FILTER app=redis GROUPBY consumer REDUCE sum
+  TS.MRANGE  - + WITHLABELS ALIGN start AGGREGATION sum 600000 FILTER app=redis metric=messages:processed:rate GROUPBY consumer REDUCE sum
   ```
 - Messages processed by given consumer  per 3s
   ```
-  TS.MRANGE  - + WITHLABELS ALIGN start AGGREGATION sum 3000 FILTER app=redis consumer={consumer_id} GROUPBY consumer REDUCE sum
+  TS.MRANGE  - + WITHLABELS ALIGN start AGGREGATION sum 3000 FILTER app=redis metric=messages:processed:rate GROUPBY consumer REDUCE sum
   ```
 
 The default interval for reporting metrics is 3 seconds configurable by `metrics.report.period.seconds` property.

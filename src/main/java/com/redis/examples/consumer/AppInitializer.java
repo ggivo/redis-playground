@@ -51,11 +51,20 @@ public class AppInitializer {
                     L_APP, "redis",
                     L_METRIC, "messages:processed:count");
 
+            tsCmd.tsCreateWithRetentionAndLabels(consumer.getProcessedMessagesTsKey() + ":rate",
+                    L_CONSUMER, consumer.getConsumerId(),
+                    L_APP, "redis",
+                    L_METRIC, "messages:processed:rate");
+
             tsCmd.tsCreateWithRetentionAndLabels(consumer.getFailedMessagesTsKey()  + ":count",
                     L_CONSUMER, consumer.getConsumerId(),
                     L_APP, "redis",
                     L_METRIC, "messages:failed:count");
 
+            tsCmd.tsCreateWithRetentionAndLabels(consumer.getFailedMessagesTsKey()  + ":rate",
+                    L_CONSUMER, consumer.getConsumerId(),
+                    L_APP, "redis",
+                    L_METRIC, "messages:failed:rate");
         } catch (Exception e) {
             logger.debug("TimeSeries {} already exists.", consumer.getProcessedMessagesTsKey());
         }
