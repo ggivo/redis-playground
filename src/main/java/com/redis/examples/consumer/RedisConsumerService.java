@@ -9,12 +9,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.redis.connection.stream.ObjectRecord;
+import org.springframework.data.redis.connection.stream.StreamRecords;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
-import java.util.HashMap;
-import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -88,8 +88,12 @@ public class RedisConsumerService {
                 logger.debug("{} - Processed message: {}", consumerId, objectMapper.writeValueAsString(msg));
 
                 // Store the processed message in Redis Stream
-                Map<String, String> processedMessage = convertToMap(msg);
-                redisTemplate.opsForStream().add("messages:processed", processedMessage);
+                ObjectRecord<String, Message> record = StreamRecords.newRecord()
+                        .in("messages:processed")
+                        .ofObject(processed);
+                redisTemplate
+                        .opsForStream()
+                        .add(record);
 
                 // Update processed messages count
                 incrementSuccessCount();
@@ -117,14 +121,6 @@ public class RedisConsumerService {
         // Try to acquire lease with configured lease expiration time
         Boolean lockAcquired = redisTemplate.opsForValue().setIfAbsent(lockKey, consumerId, lockExpirationSeconds, TimeUnit.SECONDS);
         return Boolean.TRUE.equals(lockAcquired);
-    }
-
-    private Map<String, String> convertToMap(Message msg) {
-        Map<String, String> map = new HashMap<>();
-        map.put("message_id", msg.getMessageId());
-        map.put("processed_by", msg.getProcessedBy());
-        map.put("random_property", msg.getRandomProperty());
-        return map;
     }
 
     @Scheduled(fixedRateString = "${metrics.report.period.seconds}000")

@@ -9,7 +9,7 @@ redis_host = "172.20.176.1"
 redis_port = 6379
 
 target_duration = timedelta(minutes=1)
-batch_size = 1
+batch_size = 1000
 
 
 def publisher():
@@ -29,8 +29,7 @@ def publisher():
                 p.publish("messages:published", f'{{"message_id":"{str(uuid.uuid4())}"}}')
             p.execute()
             total_messages += batch_size
-            time.sleep(random.uniform(1.0, 1.0
-            ))
+            time.sleep(random.uniform(0.1, 0.5))
     except Exception as e:
         print(f"Error: {e}")
     finally:
