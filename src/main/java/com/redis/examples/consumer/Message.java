@@ -14,6 +14,17 @@ public class Message {
     @JsonProperty("random_property")
     private String randomProperty;
 
+    public Message(String messageId) {
+        this.messageId = messageId;
+    }
+
+    public Message(String messageId, String processedBy, String randomProperty) {
+        this.messageId = messageId;
+        this.processedBy = processedBy;
+        this.randomProperty = randomProperty;
+    }
+
+
     public String getMessageId() {
         return messageId;
     }
