@@ -1,7 +1,16 @@
 # redis-playground
-
+**Table of content:**
+* [Description](#description)
+* [How to Build](#how-to-build)
+* [How to Run](#how-to-run)
+* [Configuration](#configuration)
+* [Metrics](#metrics)
+* [Improvements](#improvements)
+* [Alternative Approaches](#alternative-approaches)
+  
 ## Description
 The redis-playground is a console application that simulates scalable consumer group processing messages from a Redis Pub/Sub channel.
+
 
 ## How to Build
 To build the project, use Maven. Execute the following command:
@@ -14,11 +23,9 @@ mvn clean install
 Make sure you have a Redis server installed and running.
 
 ## Redis Consumer App
-
 Multiple instances of this app can run in parallel, consuming messages from a configured pub/sub channel. Each message will be processed only once. The list of active service instances is stored in the Redis server under the key `consumer:ids`.
 
 ### Running the Application
-
 To run instances of the application, use one of the following methods:
 
 1. **Using Maven**: Run the application directly using Maven:
@@ -32,7 +39,7 @@ To run instances of the application, use one of the following methods:
     ```
    
 ### Running the Example Publisher
-Publisher is available in publisher\pub.py
+Publisher is available in `publisher\pub.py`
 ```bash
 python publisher\pub.py
 ```
@@ -81,11 +88,9 @@ The default interval for reporting metrics is 3 seconds configurable by `metrics
 Here's the revised wording and formatting for the Java project README.md section containing the list of future improvements:
 
 ## Improvements
-
 1. Replace locking with consistent hashing.
 
-### Alternative Approaches
-
+## Alternative Approaches
 1. **Update Existing Publishers to Push Directly to Redis STREAM**
   - Utilize available STREAM GROUPS.
   - Requires control over client-side publishing.
