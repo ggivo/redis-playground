@@ -2,6 +2,7 @@ package com.redis.examples.consumer;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.slf4j.Logger;
@@ -22,8 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-//Test requires external Redis server
-//TODO : Add Embeded Redis server for the tests;
+@Disabled("Test requires external Redis server")
 class ProcessMessageIntegrationTest {
 
     private static final Logger logger = LoggerFactory.getLogger(ProcessMessageIntegrationTest.class);
