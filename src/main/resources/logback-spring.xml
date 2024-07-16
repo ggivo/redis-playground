@@ -12,9 +12,15 @@
         <appender-ref ref="console"/>
     </root>
 
-    <!-- Custom logger for RedisConsumerService -->
     <logger name="com.redis.examples.consumer" level="info" additivity="false">
         <appender-ref ref="console"/>
     </logger>
 
+    <logger name="com.redis.examples.consumer.HashSlotManager" level="debug" additivity="false">
+        <appender-ref ref="console"/>
+    </logger>
+
+    <logger name="com.redis.examples.consumer.HeartbeatService" level="debug" additivity="false">
+        <appender-ref ref="console"/>
+    </logger>
 </configuration>

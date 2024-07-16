@@ -31,6 +31,9 @@ public class AppInitializer {
     @Autowired
     HeartbeatService heartbeatService;
 
+    @Autowired
+    HashSlotManager hashSlotManager;
+
     @EventListener(ApplicationReadyEvent.class)
     public void onStartup() {
         registerConsumer();
@@ -56,12 +59,12 @@ public class AppInitializer {
                     L_APP, "redis",
                     L_METRIC, "messages:processed:rate");
 
-            tsCmd.tsCreateWithRetentionAndLabels(consumer.getFailedMessagesTsKey()  + ":count",
+            tsCmd.tsCreateWithRetentionAndLabels(consumer.getFailedMessagesTsKey() + ":count",
                     L_CONSUMER, consumer.getConsumerId(),
                     L_APP, "redis",
                     L_METRIC, "messages:failed:count");
 
-            tsCmd.tsCreateWithRetentionAndLabels(consumer.getFailedMessagesTsKey()  + ":rate",
+            tsCmd.tsCreateWithRetentionAndLabels(consumer.getFailedMessagesTsKey() + ":rate",
                     L_CONSUMER, consumer.getConsumerId(),
                     L_APP, "redis",
                     L_METRIC, "messages:failed:rate");
@@ -74,6 +77,8 @@ public class AppInitializer {
         //Send one heart beat before registering the app as active
         //to make sure other nodes does not remove it from active consumers list.
         heartbeatService.sendHeartbeat();
+
+        // Register the consumer as active
         redisCommands.lpush("consumer:ids", consumer.getConsumerId());
         logger.info("{} - Registered", consumer.getConsumerId());
     }
